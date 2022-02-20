@@ -32,15 +32,17 @@ int stepsB=0;
 float steps_oldB=0;
 float rpsB=0;
 
+int delta=1;
+
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(115200); // Starts the serial communication
   pinMode(sensorA,INPUT_PULLUP);
   pinMode(sensorB,INPUT_PULLUP);
-  Serial.print("A-STEPS - 0");
-  Serial.print("A-RPS - 0");
-  Serial.print("B-STEPS - 0");
-  Serial.print("B-RPS - 0");
+  //Serial.print("A-STEPS - 0");
+  //Serial.print("A-RPS - 0");
+  //Serial.print("B-STEPS - 0");
+  //Serial.print("B-RPS - 0");
   
   // Set all the motor control pins to outputs
   pinMode(in1A, OUTPUT);
@@ -75,7 +77,15 @@ void loop() {
   digitalWrite(in1B, HIGH);
   digitalWrite(in2B, LOW);
   digitalWrite(Standby, HIGH);
-  
+
+  if(dutyCycle<=200){
+    delta=50;
+  }
+  if(dutyCycle >= 255){
+    delta=-50;
+  }
+
+  dutyCycle+=delta;
   ledcWrite(pwmChannelA, dutyCycle);
   ledcWrite(pwmChannelB, dutyCycle);
   
@@ -96,10 +106,10 @@ while(millis()<end_time)
     //while(digitalRead(sensorB));
    }
 
-   Serial.print("A-STEPS: ");
-   Serial.println(stepsA);
-   Serial.print("B-STEPS: ");
-   Serial.println(stepsB);
+   //Serial.print("A-STEPS: ");
+   //Serial.println(stepsA);
+   //Serial.print("B-STEPS: ");
+   //Serial.println(stepsB);
 }
    temp=stepsA-steps_oldA;
    steps_oldA=stepsA;
@@ -109,9 +119,9 @@ while(millis()<end_time)
    temp=stepsB-steps_oldB;
    steps_oldB=stepsB;
    rpsB=(temp/20);
-   Serial.print("B-RPS: ");
-   Serial.println(rpsB);
+   //Serial.print("B-RPS: ");
+   //Serial.println(rpsB);
   
-  delay(1000);
+  delay(5000);
   
 }
