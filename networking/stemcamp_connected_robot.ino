@@ -15,11 +15,14 @@
 #include <WebServer.h>
 #include <ESPmDNS.h>
 
-// See the following for generating UUIDs:
-// https://www.uuidgenerator.net/
+#define BLE_NAME "ESP32-Team-X-YOURNAME"
+const char* ssid = "KSUGuest";
+const char* password = "kennesaw";
 
- 
-#define BLE_NAME "ESP322-TeamX" //must match filters name in bluetoothterminal.js- navigator.bluetooth.requestDevice
+
+
+
+
 //#define SERVICE_UUID        "6e400001-b5a3-f393-e0a9-e50e24dcca9e" //- must match optional services on navigator.bluetooth.requestDevice
 //#define CHARACTERISTIC_UUID "6e400003-b5a3-f393-e0a9-e50e24dcca9e"
 
@@ -42,9 +45,8 @@ BLEUUID CHARACTERISTIC_UUID ((uint16_t)0xFFE1);
 
 BLECharacteristic *pCharacteristic;
 
-const char* ssid = "KSUGuest";
-const char* password = "kennesaw";
 
+std::string avalue;
 WebServer server(80);
 
 
@@ -81,6 +83,7 @@ class MyCallbacks: public BLECharacteristicCallbacks {
           Serial.print(value[i]);
           
         }
+        avalue = value.c_str();
 
         Serial.println();
         Serial.println("*********");
@@ -128,7 +131,12 @@ int dutyCycle = 200;
 #define LEFT 3
 #define RIGHT 4
 #define DELAY 5
+#define SLOW 200
+#define MEDIUM 225
+#define FAST 255
 int state = STOP;
+int speedState = SLOW;
+int carspeed = SLOW;
 void setup() {
   Serial.begin(115200);
 
@@ -142,8 +150,10 @@ void setup() {
                                          BLECharacteristic::PROPERTY_READ |
                                          BLECharacteristic::PROPERTY_WRITE |
                                          BLECharacteristic::PROPERTY_NOTIFY
-                                       );
-                                       
+                                       );//
+  //pCharacteristic->setBroadcastProperty(true);
+  //pCharacteristic->setNotifyProperty(true);
+  //pCharacteristic->setIndicateProperty(true);
   pCharacteristic->setCallbacks(new MyCallbacks());
   
   pCharacteristic->addDescriptor(new BLE2902());
@@ -177,26 +187,49 @@ void setup() {
   server.on("/fwd", []() {
     server.send(200, "text/plain", "fwd");
     state = FWD;
+    Serial.println("fwd");
   });
 
   server.on("/back", []() {
     server.send(200, "text/plain", "back");
     state = BACK;
+    Serial.println("back");
   });
 
   server.on("/left", []() {
     server.send(200, "text/plain", "left");
     state = LEFT;
+    Serial.println("left");
   });
 
   server.on("/right", []() {
     server.send(200, "text/plain", "right");
     state = RIGHT;
+    Serial.println("right");
   });
 
   server.on("/stop", []() {
     server.send(200, "text/plain", "stop");
     state = STOP;
+    Serial.println("stop");
+  });
+
+  server.on("/slow", []() {
+    server.send(200, "text/plain", "stop");
+    speedState = SLOW;
+    Serial.println("slow");
+  });
+
+  server.on("/medium", []() {
+    server.send(200, "text/plain", "stop");
+    speedState = MEDIUM;
+    Serial.println("medium");
+  });
+
+  server.on("/fast", []() {
+    server.send(200, "text/plain", "stop");
+    speedState = FAST;
+    Serial.println("fast");
   });
 
   server.onNotFound(handleNotFound);
@@ -280,38 +313,49 @@ void right(int dutyCycle)
   digitalWrite(in2B, HIGH);
   ledcWrite(pwmChannelB, dutyCycle);
 }
-
+bool notSeen = true;
 void loop() {
   server.handleClient();
-
+  String mystring(avalue.c_str()); 
+  if(mystring=="HELLO" & notSeen)
+  {
+    Serial.println(WiFi.localIP().toString().c_str());
+    pCharacteristic->setValue(WiFi.localIP().toString().c_str());
+    pCharacteristic->notify();
+    notSeen = false;
+    delay(1000);
+  }
   
-  pCharacteristic->setValue(WiFi.localIP().toString().c_str());
-  pCharacteristic->notify();
-  // put your main code here, to run repeatedly:
-  /*if(Serial.available()){
-        String command = Serial.readStringUntil('\n');
-        Serial.printf("Command received %s \n", command);
-        command.concat("\n");
-        pCharacteristic->setValue(command.c_str());
-        pCharacteristic->notify();
-    }*/
-  delay(100);
-
+switch(speedState){
+  case SLOW:
+    carspeed = SLOW;
+    speedState=SLOW;
+    break;
+  case MEDIUM:
+    carspeed = MEDIUM;
+    speedState=MEDIUM;
+    break;
+  case FAST:
+    carspeed = FAST;
+    speedState=FAST;
+    break;
+  }
+  
   switch(state){
     case FWD:
-      forward(200);
+      forward(carspeed);
       state=DELAY;
       break;
     case BACK:
-      reverse(200);
+      reverse(carspeed);
       state=DELAY;
       break;
     case LEFT:
-      left(200);
+      left(carspeed);
       state=DELAY;
       break;
     case RIGHT:
-      right(200);
+      right(carspeed);
       state=DELAY;
       break;
     case STOP:
